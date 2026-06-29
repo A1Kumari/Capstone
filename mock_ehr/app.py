@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-mock_ehr = FastAPI(title="Mock EHR API")
+app = FastAPI(title="Mock EHR API")
 
 DB = {
     "P1008": {
@@ -65,22 +65,22 @@ _EMPTY = {
 }
 
 
-@mock_ehr.get("/ehr/patient/{patient_id}")
+@app.get("/ehr/patient/{patient_id}")
 def get_patient(patient_id: str):
     return DB.get(patient_id, {}).get("patient", _EMPTY["patient"])
 
-@mock_ehr.get("/ehr/med_orders/{patient_id}")
+@app.get("/ehr/med_orders/{patient_id}")
 def get_med_orders(patient_id: str):
     return DB.get(patient_id, {}).get("med_orders", _EMPTY["med_orders"])
 
-@mock_ehr.get("/ehr/labs/{patient_id}")
+@app.get("/ehr/labs/{patient_id}")
 def get_labs(patient_id: str):
     return DB.get(patient_id, {}).get("labs", _EMPTY["labs"])
 
-@mock_ehr.get("/ehr/allergies/{patient_id}")
+@app.get("/ehr/allergies/{patient_id}")
 def get_allergies(patient_id: str):
     return DB.get(patient_id, {}).get("allergies", _EMPTY["allergies"])
 
-@mock_ehr.get("/ehr/careplan/{patient_id}")
+@app.get("/ehr/careplan/{patient_id}")
 def get_careplan(patient_id: str):
     return DB.get(patient_id, {}).get("careplan", _EMPTY["careplan"])

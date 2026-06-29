@@ -1,4 +1,5 @@
 import sys
+import uuid
 import logging
 import traceback
 from pathlib import Path
@@ -10,7 +11,7 @@ logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s [%(name)s] %(levelname)s — %(message)s",
     handlers=[logging.StreamHandler(sys.stdout)],
-    force=True,   # override any prior config (langchain, etc.)
+    force=True,
 )
 log = logging.getLogger("Monitor")
 
@@ -66,6 +67,9 @@ class ClinicalFileHandler(FileSystemEventHandler):
 
             # ── Step 3: LangGraph pipeline ───────────────────────
             log.info("[Monitor] STEP 3 — Invoking LangGraph pipeline…")
+            thread_id = str(uuid.uuid4())
+            config    = {"configurable": {"thread_id": thread_id}}
+
             initial_state = {
                 "discharge_path"      : file_path,
                 "lab_path"            : "",
@@ -81,13 +85,11 @@ class ClinicalFileHandler(FileSystemEventHandler):
                 "current_stage"       : "starting",
                 "status"              : "running",
                 "error"               : None,
-                "hitl_required"       : False,
-                "hitl_reason"         : None,
                 "hitl_corrections"    : None,
                 "risk_level"          : None,
             }
 
-            final_state = discharge_pipeline.invoke(initial_state)
+            final_state = discharge_pipeline.invoke(initial_state, config=config)
 
             # ── Step 4: Result ───────────────────────────────────
             log.info("[Monitor] STEP 4 — Pipeline complete")
@@ -95,10 +97,11 @@ class ClinicalFileHandler(FileSystemEventHandler):
             log.info(f"[Monitor] Stage     : {final_state.get('current_stage')}")
             log.info(f"[Monitor] Risk level: {final_state.get('risk_level')}")
 
-            if final_state.get("hitl_required"):
-                log.warning(f"[Monitor] HITL required: {final_state.get('hitl_reason')}")
-
+            # Detect HITL interrupt via graph checkpoint state
+            graph_snapshot = discharge_pipeline.get_state(config)
+            if graph_snapshot.next:
                 completeness = final_state.get("completeness", {})
+                log.warning("[Monitor] Pipeline paused — human review required (headless mode: skipping HITL)")
                 log.warning(f"[Monitor] Missing fields   : {completeness.get('missing_fields', [])}")
                 log.warning(f"[Monitor] Rule violations  : {completeness.get('rule_violations', [])}")
 

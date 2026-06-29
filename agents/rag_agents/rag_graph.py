@@ -43,7 +43,7 @@ workflow.add_conditional_edges(
    route_reflection,
    {
        "useful": END,
-       "not_grounded": "generate", # Loop back to try again
+       "not_grounded": "retrieve",  # Re-retrieve fresh docs, not just re-generate
        "max_loops": END
    }
 )

@@ -26,6 +26,8 @@ from typing import Dict, Any, List
 import requests
 import yaml
 
+from configs.config import EHR_BASE_URL
+
 log = logging.getLogger("EHRValidationAgent")
 
 # ── Load rules.yaml ────────────────────────────────────────────
@@ -43,7 +45,7 @@ _BIZ_RULES      = _RULES.get("business_rules", {})
 # ═══════════════════════════════════════════════════════════════
 
 class EHRClient:
-    BASE_URL = "http://127.0.0.1:8000"
+    BASE_URL = EHR_BASE_URL
     TIMEOUT  = 5   # seconds
 
     def _get(self, url: str) -> dict:
@@ -288,6 +290,20 @@ def validate_discharge(normalized: Dict[str, Any]) -> Dict[str, Any]:
     ehr_labs     = client.get_labs(patient_id)
     ehr_allergies= client.get_allergies(patient_id)
     ehr_careplan = client.get_careplan(patient_id)
+
+    # If the patient was not found in EHR (empty or sentinel response), skip
+    # cross-validation to avoid generating false-positive discrepancies.
+    patient_found = bool(ehr_patient.get("patient_id")) if isinstance(ehr_patient, dict) else False
+    if not patient_found:
+        log.warning(f"[EHR] Patient '{patient_id}' not found in EHR system — skipping cross-validation")
+        return {
+            "passed"                   : True,
+            "discrepancies"            : [],
+            "allergy_conflicts"        : [],
+            "ehr_medications"          : [],
+            "counseling_noted_for"     : [],
+            "abnormal_labs_unresolved" : [],
+        }
 
     # ── Extract discharge med names from normalized ───────────
     discharge_meds = [

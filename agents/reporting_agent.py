@@ -143,7 +143,9 @@ def generate_report(
               f"{QUALITY['translation_confidence_min']}")
 
     # ── 7. Follow-up missing ──────────────────────────────────
-    if not normalized.get("follow_up_appointment"):
+    # Only flag here if EHR agent didn't already raise it (avoid double-counting)
+    ehr_flagged_rules = {d.get("rule") for d in ehr_validation.get("discrepancies", [])}
+    if not normalized.get("follow_up_appointment") and "followup_missing" not in ehr_flagged_rules:
         _flag("followup_missing", "Follow-up appointment not documented")
 
     # ── 8. Abnormal labs without follow-up ───────────────────

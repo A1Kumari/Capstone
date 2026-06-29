@@ -126,8 +126,7 @@ risk_scoring_matrix:
     - allergy_contradiction
     - high_risk_med_missing_in_ehr
     - incomplete_prescription_fields
-    - translation_confidence_below_threshold
-    - rag_unsafe_response
+    - low_translation_confidence
     - service_line_pediatric
     - service_line_obstetric
     - service_line_oncology

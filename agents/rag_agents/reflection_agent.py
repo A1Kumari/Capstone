@@ -49,7 +49,7 @@ def reflection_node(state: RAGState) -> dict:
         groundedness = float(scores.get("groundedness", 0.0))
         answer_rel = float(scores.get("answer_relevance", 0.0))
         
-        is_grounded = groundedness > 0.5
+        is_grounded = groundedness >= 0.75
     except Exception as e:
         print(f"--- REFLECTION: Error parsing triad check: {e} ---")
         is_grounded = False

@@ -26,10 +26,14 @@ def generation_node(state: RAGState) -> dict:
        {"role": "user", "content": question}
    ]
 
-   response = litellm.completion(
-       model=LITELLM_MODEL,
-       messages=messages,
-   )
+   try:
+       response = litellm.completion(
+           model=LITELLM_MODEL,
+           messages=messages,
+       )
+       generation = response.choices[0].message.content
+   except Exception as e:
+       print(f"--- GENERATION AGENT: LLM call failed: {e} ---")
+       generation = RAG_UNKNOWN_RESPONSE
 
-   generation = response.choices[0].message.content
    return {"generation": generation}

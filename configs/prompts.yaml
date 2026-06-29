@@ -180,7 +180,7 @@ rag_reflection:
     3. answer_relevance: How well the generated answer addresses the user's original question.
 
     You MUST respond with a valid JSON object strictly containing these three keys with float values. Example:
-    {"context_relevance": 0.9, "groundedness": 1.0, "answer_relevance": 0.8}
+    {{"context_relevance": 0.9, "groundedness": 1.0, "answer_relevance": 0.8}}
 
 
 # -----------------------------------------------------------------------------

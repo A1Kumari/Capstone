@@ -20,6 +20,10 @@ load_dotenv()
 
 _CONFIGS_DIR = Path(__file__).resolve().parent
 
+# ── API keys & service URLs (override via .env) ───────────────────────────────
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+EHR_BASE_URL   = os.getenv("EHR_BASE_URL",   "http://127.0.0.1:8000")
+
 # ── Model names (override via .env) ───────────────────────────────────────────
 LITELLM_MODEL   = os.getenv("LITELLM_MODEL",   "gemini/gemini-2.5-flash-lite")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "models/gemini-embedding-001")

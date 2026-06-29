@@ -7,14 +7,12 @@ python-docx
 pytesseract
 Pillow
 litellm
-boto3
 pyyaml
 langgraph
 langchain-core
-langchain-openai
-langchain-anthropic
 langchain-community
 langchain-google-genai
+langchain-text-splitters
 faiss-cpu
 pydantic
 fpdf2

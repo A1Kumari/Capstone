@@ -8,7 +8,7 @@ from langchain_community.vectorstores import FAISS
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from dotenv import load_dotenv
-from configs.config import EMBEDDING_MODEL
+from configs.config import EMBEDDING_MODEL, GEMINI_API_KEY
 
 load_dotenv()
 
@@ -19,7 +19,7 @@ PATIENTS_FILE = INDEX_DIR / "patients.json"
 def get_embeddings():
     return GoogleGenerativeAIEmbeddings(
         model=EMBEDDING_MODEL,
-        google_api_key=os.getenv("GEMINI_API_KEY"),
+        google_api_key=GEMINI_API_KEY,
     )
 
 
@@ -56,7 +56,7 @@ def get_retriever(patient_id=None):
     else:
         vectorstore = FAISS.from_texts(["No patient records found."], embedding=embeddings)
 
-    search_kwargs = {"k": 3}
+    search_kwargs = {"k": 6}
     if patient_id:
         search_kwargs["filter"] = {"patient_id": patient_id}
 
