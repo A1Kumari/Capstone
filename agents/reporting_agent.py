@@ -1,13 +1,16 @@
 import hashlib
+import json
 import logging
 from datetime import datetime
+from html import escape
 from pathlib import Path
 
 import yaml
 
 log = logging.getLogger("ReportingAgent")
 
-_RULES_PATH = Path(__file__).resolve().parent.parent / "configs" / "rules.yaml"
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+_RULES_PATH   = _PROJECT_ROOT / "configs" / "rules.yaml"
 
 def _load_rules() -> dict:
     with open(_RULES_PATH, "r") as f:
@@ -24,6 +27,10 @@ RECOMMENDATIONS = RULES["reporting"]["recommendations"]
 QUALITY     = RULES["quality_thresholds"]
 BIZ_RULES   = RULES["business_rules"]
 HIGH_RISK_MEDS = set(RULES["clinical_validation_policies"]["high_risk_meds_need_counseling"])
+
+_REPORTING_CFG  = RULES["reporting"]
+_OUTPUT_DIR     = (_PROJECT_ROOT / _REPORTING_CFG.get("output_dir", "data/reports")).resolve()
+_REPORT_FORMATS = set(_REPORTING_CFG.get("formats", ["json", "html"]))
 
 
 def generate_report(
@@ -281,3 +288,92 @@ Discharge Release  : {release_status}
 def _get_med_names(normalized: dict) -> list[str]:
     meds = normalized.get("medications", [])
     return [m.get("medicine_name", "") for m in meds if m.get("medicine_name")]
+
+
+def persist_report(report: dict) -> dict:
+    """Write the audit report to disk per rules.yaml's `reporting` config
+    (output_dir / formats). Non-fatal — persistence failures are logged
+    but never raised, so a disk/permission issue can't fail the pipeline.
+    """
+    written = {}
+    try:
+        _OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        patient_id = report.get("patient_id") or "unknown"
+        stamp = (report.get("generated_at") or datetime.now().isoformat(timespec="seconds")).replace(":", "-")
+        stem  = f"{patient_id}_{stamp}"
+
+        if "json" in _REPORT_FORMATS:
+            json_path = _OUTPUT_DIR / f"{stem}.json"
+            json_path.write_text(json.dumps(report, indent=2, default=str))
+            written["json"] = str(json_path)
+            log.info(f"[Reporting] JSON report written: {json_path}")
+
+        if "html" in _REPORT_FORMATS:
+            html_path = _OUTPUT_DIR / f"{stem}.html"
+            html_path.write_text(_render_html_report(report))
+            written["html"] = str(html_path)
+            log.info(f"[Reporting] HTML report written: {html_path}")
+
+    except Exception as exc:
+        log.warning(f"[Reporting] Failed to persist report to disk (non-fatal): {exc}")
+
+    return written
+
+
+def _render_html_report(report: dict) -> str:
+    risk = (report.get("risk_level") or "unknown").upper()
+    colors = {
+        "LOW":    ("#dcfce7", "#15803d"),
+        "MEDIUM": ("#fef3c7", "#92400e"),
+        "HIGH":   ("#fee2e2", "#b91c1c"),
+    }
+    bg, fg = colors.get(risk, ("#f0f0f0", "#3c3c3c"))
+
+    flags = sorted(report.get("flags") or [], key=lambda f: -f.get("weight", 0))
+    flag_rows = "".join(
+        f'<tr style="background:{"#fee2e2" if f.get("weight", 0) >= 8 else ("#fef3c7" if f.get("weight", 0) >= 3 else "#fff")}">'
+        f'<td>{escape(str(f.get("rule", "")))}</td>'
+        f'<td>+{f.get("weight", 0)}</td>'
+        f'<td>{escape(str(f.get("detail", "")))}</td></tr>'
+        for f in flags
+    ) or '<tr><td colspan="3">No flags raised.</td></tr>'
+
+    audit_rows = "".join(
+        f'<tr><td>{escape(str(a.get("timestamp", "")))}</td>'
+        f'<td>{escape(str(a.get("agent", "")))}</td>'
+        f'<td>{escape(str(a.get("message", "")))}</td></tr>'
+        for a in (report.get("audit_trail") or [])
+    ) or '<tr><td colspan="3">No audit entries.</td></tr>'
+
+    return f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<title>Discharge Audit Report — {escape(str(report.get('patient_id', '')))}</title>
+<style>
+  body {{ font-family: -apple-system, Helvetica, Arial, sans-serif; max-width: 860px; margin: 32px auto; color:#222; padding: 0 16px; }}
+  h1 {{ font-size: 1.4rem; }}
+  h2 {{ font-size: 1.05rem; margin-top: 28px; border-bottom: 2px solid #eee; padding-bottom: 4px; }}
+  .risk-banner {{ background:{bg}; color:{fg}; padding:14px 20px; border-radius:8px; font-weight:700; margin:16px 0; }}
+  .meta {{ color:#666; font-size:.85rem; margin-bottom:20px; }}
+  pre.summary {{ background:#f7f7f7; padding:16px; border-radius:8px; white-space:pre-wrap; font-size:.9rem; line-height:1.5; }}
+  table {{ width:100%; border-collapse:collapse; margin:12px 0 24px; font-size:.85rem; }}
+  th, td {{ border:1px solid #ddd; padding:6px 10px; text-align:left; vertical-align:top; }}
+  th {{ background:#f0f0f0; }}
+</style></head>
+<body>
+  <h1>Clinical Discharge Audit Report</h1>
+  <div class="meta">Generated: {escape(str(report.get('generated_at', '—')))}
+    &middot; Rules version: {escape(str(report.get('rules_version', '—')))}</div>
+  <div class="risk-banner">RISK: {risk} &nbsp;|&nbsp; Score: {report.get('risk_score', 0)}
+    &nbsp;|&nbsp; {escape(str(report.get('recommendation', '—')))}</div>
+
+  <h2>Discharge Summary</h2>
+  <pre class="summary">{escape(str(report.get('summary', '')))}</pre>
+
+  <h2>Audit Flags ({len(flags)})</h2>
+  <table><thead><tr><th>Rule</th><th>Weight</th><th>Detail</th></tr></thead>
+  <tbody>{flag_rows}</tbody></table>
+
+  <h2>Audit Trail</h2>
+  <table><thead><tr><th>Timestamp</th><th>Agent</th><th>Message</th></tr></thead>
+  <tbody>{audit_rows}</tbody></table>
+</body></html>"""

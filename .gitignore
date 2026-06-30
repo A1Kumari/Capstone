@@ -26,6 +26,9 @@ Data/faiss_index/
 data/incoming/
 Data/incoming/
 
+# Generated audit reports (contain patient data — not source)
+data/reports/
+
 # Streamlit
 .streamlit/secrets.toml
 

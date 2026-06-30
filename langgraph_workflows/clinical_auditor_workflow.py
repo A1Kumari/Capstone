@@ -12,7 +12,7 @@ from pipeline_state import PipelineState
 from agents.translation_normalization_agent import translate_and_normalize
 from agents.completeness_agent   import check_clinical_completeness
 from agents.ehr_validation_agent import validate_discharge
-from agents.reporting_agent      import generate_report
+from agents.reporting_agent      import generate_report, persist_report
 from agents.rag_agents.indexing_agent import index_documents
 
 log = logging.getLogger("Workflow")
@@ -107,6 +107,7 @@ def reporting_node(state: PipelineState) -> dict:
     log.info("[reporting] START")
     try:
         report = generate_report(state["normalized"], state["completeness"], state["ehr_validation"])
+        report["report_files"] = persist_report(report)
         log.info(f"[reporting] risk={report.get('risk_level')} score={report.get('risk_score')}")
         return {
             "report"       : report,

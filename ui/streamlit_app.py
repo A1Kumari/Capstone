@@ -1252,6 +1252,11 @@ with tab_results:
                 unsafe_allow_html=True
             )
 
+            report_files = report.get("report_files") or {}
+            if report_files:
+                saved = "  ·  ".join(f"{fmt}: `{path}`" for fmt, path in report_files.items())
+                st.caption(f"Saved to disk — {saved}")
+
             t1, t2, t3, t4, t5 = st.tabs(
                 ["Summary", "Risk Flags", "Full JSON", "Download JSON", "Download PDF"]
             )
