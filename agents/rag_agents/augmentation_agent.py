@@ -1,4 +1,3 @@
-# augmentation_agent.py
 import json
 import litellm
 from agents.rag_agents.rag_state import RAGState
@@ -49,7 +48,6 @@ def augmentation_grader_node(state: RAGState) -> dict:
             print(f"--- GRADE: Error grading document, keeping it. Error: {e} ---")
             filtered_docs.append(d)
 
-    # Always pass at least the first retrieved doc so generation isn't starved
     if not filtered_docs:
         print("--- GRADE: All docs filtered — falling back to top retrieved doc ---")
         filtered_docs = [documents[0]]

@@ -1,24 +1,3 @@
-"""
-agents/ehr_validation_agent.py
-─────────────────────────────────────────────────────────────────
-EHR Validation Agent — EHR Validation Tool
-
-Input  : normalized dict (state["normalized"] from pipeline_state)
-
-Output :
-    {
-        "passed"                   : bool,
-        "discrepancies"            : [{"rule": str, "detail": str}],
-        "allergy_conflicts"        : [str],
-        "ehr_medications"          : [str],   # med names from EHR history
-        "counseling_noted_for"     : [str],   # meds with counseling in EHR
-        "abnormal_labs_unresolved" : [str],
-    }
-
-reporting_agent reads exactly these keys.
-graph checks result.get("passed") for routing.
-"""
-
 import logging
 from pathlib import Path
 from typing import Dict, Any, List
@@ -30,7 +9,6 @@ from configs.config import EHR_BASE_URL
 
 log = logging.getLogger("EHRValidationAgent")
 
-# ── Load rules.yaml ────────────────────────────────────────────
 _RULES_PATH = Path(__file__).resolve().parent.parent / "configs" / "rules.yaml"
 with open(_RULES_PATH) as f:
     _RULES = yaml.safe_load(f)
@@ -39,10 +17,6 @@ _POLICIES       = _RULES.get("clinical_validation_policies", {})
 _HIGH_RISK_MEDS = set(_POLICIES.get("high_risk_meds_need_counseling", []))
 _BIZ_RULES      = _RULES.get("business_rules", {})
 
-
-# ═══════════════════════════════════════════════════════════════
-#  EHR Client
-# ═══════════════════════════════════════════════════════════════
 
 class EHRClient:
     BASE_URL = EHR_BASE_URL
@@ -80,19 +54,10 @@ class EHRClient:
         return self._get(f"{self.BASE_URL}/ehr/careplan/{patient_id}")
 
 
-# ═══════════════════════════════════════════════════════════════
-#  Individual check functions
-# ═══════════════════════════════════════════════════════════════
-
 def _check_medication_omission(
     discharge_meds: List[str],
     ehr_med_data: dict,
 ) -> List[Dict]:
-    """
-    Medications in EHR history that are absent from discharge prescription.
-    discharge_meds : list of medicine_name strings from normalized data
-    ehr_med_data   : response from GET /ehr/med_orders/{id}
-    """
     issues = []
 
     if isinstance(ehr_med_data, list):
@@ -128,9 +93,6 @@ def _check_allergy_contradiction(
     discharge_meds: List[str],
     ehr_allergy_data: dict,
 ) -> List[str]:
-    """
-    Returns list of med names that appear in both prescription and allergy list.
-    """
     conflicts = []
     if isinstance(ehr_allergy_data, list):
         allergy_list = ehr_allergy_data
@@ -153,9 +115,6 @@ def _check_diagnosis_mismatch(
     normalized: dict,
     ehr_patient: dict,
 ) -> List[Dict]:
-    """
-    Compares discharge diagnosis against EHR primary diagnosis.
-    """
     issues = []
     discharge_dx = normalized.get("discharge_diagnosis", "").lower().strip()
     if isinstance(ehr_patient, dict):
@@ -181,9 +140,6 @@ def _check_followup(
     normalized: dict,
     careplan: dict,
 ) -> List[Dict]:
-    """
-    If careplan requires follow-up but discharge has none — flag it.
-    """
     issues = []
     follow_up_required = careplan.get("follow_up_required") if isinstance(careplan, dict) else False
     if follow_up_required and not normalized.get("follow_up_appointment"):
@@ -198,10 +154,6 @@ def _check_abnormal_labs(
     lab_data: dict,
     normalized: dict,
 ) -> List[str]:
-    """
-    Returns list of abnormal lab names that have no documented follow-up action.
-    Only flagged if clinical_validation_policies.abnormal_lab_requires_followup = true.
-    """
     if not _POLICIES.get("abnormal_lab_requires_followup", False):
         return []
 
@@ -229,9 +181,6 @@ def _check_abnormal_labs(
 
 
 def _check_discharge_approval(ehr_patient: dict) -> List[Dict]:
-    """
-    Checks that the doctor has approved discharge in EHR.
-    """
     issues = []
     if _BIZ_RULES.get("discharge_ok_field_required"):
         approved = ehr_patient.get("discharge_approved", False) if isinstance(ehr_patient, dict) else False
@@ -244,10 +193,7 @@ def _check_discharge_approval(ehr_patient: dict) -> List[Dict]:
 
 
 def _get_counseling_noted(ehr_med_data: dict) -> List[str]:
-    """
-    Returns list of med names that have counseling notes in EHR.
-    Mock EHR: {"counseling_notes": ["Warfarin", ...]}
-    """
+    # Mock EHR: {"counseling_notes": ["Warfarin", ...]}
     if isinstance(ehr_med_data, list):
         return []
     elif isinstance(ehr_med_data, dict):
@@ -255,18 +201,7 @@ def _get_counseling_noted(ehr_med_data: dict) -> List[str]:
     return []
 
 
-# ═══════════════════════════════════════════════════════════════
-#  Public entry point
-# ═══════════════════════════════════════════════════════════════
-
 def validate_discharge(normalized: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Args:
-        normalized : state["normalized"] from pipeline_state
-                     (direct output of translation agent _fill_defaults)
-
-    Returns EHR validation result dict — see module docstring.
-    """
     patient_id = normalized.get("patient_id", "")
 
     if not patient_id:
@@ -284,7 +219,6 @@ def validate_discharge(normalized: Dict[str, Any]) -> Dict[str, Any]:
     log.info(f"[EHR] Validating patient: {patient_id}")
     client = EHRClient()
 
-    # ── Fetch from mock EHR ───────────────────────────────────
     ehr_patient  = client.get_patient(patient_id)
     ehr_meds     = client.get_med_orders(patient_id)
     ehr_labs     = client.get_labs(patient_id)
@@ -305,14 +239,12 @@ def validate_discharge(normalized: Dict[str, Any]) -> Dict[str, Any]:
             "abnormal_labs_unresolved" : [],
         }
 
-    # ── Extract discharge med names from normalized ───────────
     discharge_meds = [
         m.get("medicine_name", "")
         for m in normalized.get("medications", [])
         if m.get("medicine_name")
     ]
 
-    # ── Run all checks ────────────────────────────────────────
     discrepancies = []
 
     discrepancies.extend(_check_medication_omission(discharge_meds, ehr_meds))
@@ -325,7 +257,6 @@ def validate_discharge(normalized: Dict[str, Any]) -> Dict[str, Any]:
     ehr_med_names            = ehr_meds if isinstance(ehr_meds, list) else (ehr_meds.get("med_orders", ehr_meds.get("meds_orders", [])) if isinstance(ehr_meds, dict) else [])
     counseling_noted_for     = _get_counseling_noted(ehr_meds)
 
-    # ── Determine passed ──────────────────────────────────────
     passed = (
         len(discrepancies)            == 0
         and len(allergy_conflicts)    == 0
@@ -352,7 +283,6 @@ def validate_discharge(normalized: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-# ── Quick test ─────────────────────────────────────────────────
 if __name__ == "__main__":
     client = EHRClient()
     for pid in ["P1008"]:

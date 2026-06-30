@@ -1,4 +1,3 @@
-# generation_agent.py
 import litellm
 from agents.rag_agents.rag_state import RAGState
 
@@ -8,9 +7,6 @@ from configs.config import LITELLM_MODEL, RAG_UNKNOWN_RESPONSE, get_prompt
 load_dotenv()
 
 def generation_node(state: RAGState) -> dict:
-   """
-   Generates an answer using the retrieved context.
-   """
    print("--- GENERATION AGENT: Drafting Response ---")
    question = state["question"]
    documents = state["documents"]

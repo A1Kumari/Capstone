@@ -1,4 +1,3 @@
-# retrieval_agent.py
 from agents.rag_agents.rag_state import RAGState
 from agents.rag_agents.indexing_agent import get_retriever
 

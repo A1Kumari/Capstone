@@ -9,6 +9,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.types import interrupt
 
 from pipeline_state import PipelineState
+from agents.translation_normalization_agent import translate_and_normalize
 from agents.completeness_agent   import check_clinical_completeness
 from agents.ehr_validation_agent import validate_discharge
 from agents.reporting_agent      import generate_report
@@ -17,7 +18,35 @@ from agents.rag_agents.indexing_agent import index_documents
 log = logging.getLogger("Workflow")
 
 
-# ── Nodes ─────────────────────────────────────────────────────
+def translation_node(state: PipelineState) -> dict:
+    log.info("[translation] START")
+    result = translate_and_normalize(state["extracted_discharge"])
+
+    if result.get("status") != "success":
+        log.error(f"[translation] FAILED: {result.get('error', result.get('status'))}")
+        return {
+            "translation"  : result,
+            "normalized"   : result.get("normalized_output", {}),
+            "current_stage": "translation",
+            "status"       : "failed",
+            "error"        : result.get("error", "Translation failed"),
+        }
+
+    log.info(
+        f"[translation] done — language={result.get('detected_language')} "
+        f"confidence={result.get('translation_confidence')}"
+    )
+    return {
+        "translation"  : result,
+        "normalized"   : result.get("normalized_output", {}),
+        "current_stage": "translation",
+        "status"       : "running",
+    }
+
+
+def route_after_translation(state: PipelineState) -> str:
+    return "end" if state["status"] == "failed" else "completeness"
+
 
 def completeness_node(state: PipelineState) -> dict:
     log.info("[completeness] START")
@@ -105,17 +134,18 @@ def route_after_reporting(state: PipelineState) -> str:
     return "end" if state["status"] == "failed" else "rag_index"
 
 
-# ── Graph ─────────────────────────────────────────────────────
-
 def _build() -> StateGraph:
     g = StateGraph(PipelineState)
 
+    g.add_node("translation",  translation_node)
     g.add_node("completeness", completeness_node)
     g.add_node("ehr",          ehr_node)
     g.add_node("reporting",    reporting_node)
     g.add_node("rag_index",    rag_index_node)
 
-    g.set_entry_point("completeness")
+    g.set_entry_point("translation")
+    g.add_conditional_edges("translation", route_after_translation,
+                            {"completeness": "completeness", "end": END})
     g.add_edge("completeness", "ehr")
     g.add_edge("ehr",          "reporting")
     g.add_conditional_edges("reporting", route_after_reporting,

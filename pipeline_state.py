@@ -13,6 +13,7 @@ class PipelineState(TypedDict):
     normalized          : dict
 
     # ── Node outputs ──────────────────────────────────────────
+    translation         : dict
     completeness        : dict
     ehr_validation      : dict
     report              : dict

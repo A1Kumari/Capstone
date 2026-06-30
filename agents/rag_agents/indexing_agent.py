@@ -1,4 +1,3 @@
-# indexing_agent.py
 import os
 import json
 from pathlib import Path
@@ -24,7 +23,6 @@ def get_embeddings():
 
 
 def list_indexed_patients() -> dict:
-    """Return {patient_id: {patient_id, patient_name, indexed_at}} for all indexed patients."""
     if PATIENTS_FILE.exists():
         with open(PATIENTS_FILE) as f:
             return json.load(f)
@@ -32,7 +30,6 @@ def list_indexed_patients() -> dict:
 
 
 def _register_patient(patient_id: str, patient_name: str) -> None:
-    """Upsert patient entry in the persistent patients registry."""
     registry = list_indexed_patients()
     registry[patient_id] = {
         "patient_id"  : patient_id,
@@ -44,7 +41,6 @@ def _register_patient(patient_id: str, patient_name: str) -> None:
 
 
 def get_retriever(patient_id=None):
-    """Load the FAISS vector store from disk and return a retriever."""
     embeddings = get_embeddings()
 
     if INDEX_DIR.exists() and (INDEX_DIR / "index.faiss").exists():
@@ -64,7 +60,6 @@ def get_retriever(patient_id=None):
 
 
 def index_documents(normalized, report):
-    """Index the patient report into FAISS, persist to disk, and register the patient."""
     print("--- INDEXING AGENT: Indexing patient data ---")
     patient_id   = normalized.get("patient_id", "unknown")
     patient_name = normalized.get("patient_name", "Unknown Patient")

@@ -45,6 +45,16 @@ translation_normalization:
       "discharge_ok"            : "boolean",
       "detected_language"       : "string  (ISO 639-1 code, e.g. en, hi, de)",
       "translation_confidence"  : "float between 0.0 and 1.0",
+      "lab_vendor"              : "string  (diagnostic lab / vendor name, e.g. Quest Diagnostics)",
+      "lab_results": [
+        {
+          "name"            : "string  (test name, e.g. HbA1c)",
+          "value"           : "string",
+          "unit"            : "string",
+          "reference_range" : "string",
+          "status"          : "string  (normal / abnormal / critical)"
+        }
+      ],
       "medications": [
         {
           "sl_no"          : "string",
@@ -69,7 +79,10 @@ translation_normalization:
     2. Expand ALL medical abbreviations using this map:
     {abbreviation_map}
     3. Extract structured patient data from the text and tables.
-    4. Return ONLY a valid JSON object — no explanation, no markdown, no code fences.
+    4. If a lab / diagnostic report section is present, extract lab_vendor (the
+       lab or diagnostic center name) and lab_results (one entry per test, with
+       its name, value, unit, reference range, and normal/abnormal/critical status).
+    5. Return ONLY a valid JSON object — no explanation, no markdown, no code fences.
 
     The JSON must follow this exact schema (use empty string "" for missing fields,
     empty list [] for missing lists, false for missing booleans):
@@ -80,6 +93,7 @@ translation_normalization:
     - translation_confidence: 1.0 if source was English, 0.7-0.95 for translated content.
     - Do NOT invent data. If a field is not in the documents, use "" or [].
     - medications must come from the prescription/medication section only.
+    - lab_results must come from the lab/diagnostic report section only.
 
 
 # -----------------------------------------------------------------------------

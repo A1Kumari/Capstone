@@ -1,31 +1,3 @@
-"""
-agents/translation_normalization_agent.py
-─────────────────────────────────────────────────────────────────
-Clinical Linguist Agent — Medical Lang Bridge Tool
-
-Input  : extracted payload from extractor_agent
-         {"text": str, "tables": [...], "status": "success", ...}
-
-Output :
-    {
-        "status"            : "success" | "failed" | "empty",
-        "normalized_output" : { ...structured patient dict... },
-        "detected_language" : str,
-        "translation_confidence" : float
-    }
-
-normalized_output always has these keys (empty string if not found):
-    patient_id, patient_name, age, gender, address,
-    admission_date, discharge_date, ward, bed_no,
-    attending_physician, consulting_doctors,
-    discharge_diagnosis, allergies,
-    follow_up_appointment, discharge_instructions,
-    medications: [{sl_no, medicine_name, strength, dosage,
-                   frequency, route, period, remarks, total_quantity}],
-    bill_paid, total_bill, discharge_ok, service_line,
-    translation_confidence
-"""
-
 import json
 import logging
 from typing import Dict, Any
@@ -46,17 +18,7 @@ _SYSTEM_PROMPT = get_prompt(
 )
 
 
-# ═══════════════════════════════════════════════════════════════
-#  Public entry point
-# ═══════════════════════════════════════════════════════════════
-
 def translate_and_normalize(extracted_payload: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Args:
-        extracted_payload : output dict from extract_clinical_data()
-
-    Returns normalized output dict — see module docstring.
-    """
     raw_text   = extracted_payload.get("text", "")
     raw_tables = extracted_payload.get("tables", [])
 
@@ -98,7 +60,6 @@ def translate_and_normalize(extracted_payload: Dict[str, Any]) -> Dict[str, Any]
 
         normalized = json.loads(raw_output)
 
-        # Guarantee all required keys exist
         normalized = _fill_defaults(normalized)
 
         confidence = float(normalized.get("translation_confidence", 0.95))
@@ -136,10 +97,6 @@ def translate_and_normalize(extracted_payload: Dict[str, Any]) -> Dict[str, Any]
         }
 
 
-# ═══════════════════════════════════════════════════════════════
-#  Helpers
-# ═══════════════════════════════════════════════════════════════
-
 def _empty_normalized() -> dict:
     return {
         "patient_id"             : "",
@@ -163,6 +120,8 @@ def _empty_normalized() -> dict:
         "discharge_ok"           : False,
         "detected_language"      : "unknown",
         "translation_confidence" : 0.0,
+        "lab_vendor"             : "",
+        "lab_results"            : [],
         "medications"            : [],
     }
 
@@ -173,7 +132,8 @@ def _fill_defaults(data: dict) -> dict:
     for key, default_val in defaults.items():
         if key not in data or data[key] is None:
             data[key] = default_val
-    # Ensure medications is always a list
     if not isinstance(data.get("medications"), list):
         data["medications"] = []
+    if not isinstance(data.get("lab_results"), list):
+        data["lab_results"] = []
     return data

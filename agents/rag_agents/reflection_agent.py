@@ -1,4 +1,3 @@
-# reflection_agent.py
 import json
 import litellm
 from agents.rag_agents.rag_state import RAGState
@@ -44,7 +43,6 @@ def reflection_node(state: RAGState) -> dict:
         content = response.choices[0].message.content
         scores = json.loads(content)
         
-        # Extract safely
         context_rel = float(scores.get("context_relevance", 0.0))
         groundedness = float(scores.get("groundedness", 0.0))
         answer_rel = float(scores.get("answer_relevance", 0.0))

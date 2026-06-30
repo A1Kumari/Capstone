@@ -1,24 +1,3 @@
-"""
-agents/completeness_agent.py
-─────────────────────────────────────────────────────────────────
-Clinical Data Completeness Agent — Clinical Rules Engine Tool
-
-Input  : normalized dict  (state["normalized"] from pipeline_state)
-         i.e. the direct output of _fill_defaults() in translation agent
-         NOT the full translation payload wrapper
-
-Output :
-    {
-        "passed"          : bool,         # False = HITL required
-        "missing_fields"  : [str],        # mandatory field names missing
-        "rule_violations" : [str],        # prescription row gaps, policy hits
-        "validated_data"  : dict,         # echo back normalized for convenience
-    }
-
-The graph checks result.get("passed") to decide routing.
-The reporting agent reads result["missing_fields"] and result["rule_violations"].
-"""
-
 import os
 import logging
 from pathlib import Path
@@ -28,7 +7,6 @@ import yaml
 
 log = logging.getLogger("CompletenessAgent")
 
-# ── Load rules.yaml ────────────────────────────────────────────
 _RULES_PATH = Path(__file__).resolve().parent.parent / "configs" / "rules.yaml"
 
 def _load_rules() -> dict:
@@ -46,24 +24,13 @@ def _load_rules() -> dict:
 RULES = _load_rules()
 
 
-# ═══════════════════════════════════════════════════════════════
-#  Public entry point
-# ═══════════════════════════════════════════════════════════════
-
 def check_clinical_completeness(normalized: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Args:
-        normalized : the normalized_output dict directly
-                     (state["normalized"] in the LangGraph state)
-
-    Returns completeness result dict — see module docstring.
-    """
     log.info("[Completeness] Running validation rules check")
 
     missing_fields  : List[str] = []
     rule_violations : List[str] = []
 
-    # ── 1. Mandatory clinical fields ──────────────────────────
+    # 1. Mandatory clinical fields
     for field in RULES.get("mandatory_clinical_fields", []):
         value = normalized.get(field)
         # Empty string, None, empty list all count as missing
@@ -71,7 +38,7 @@ def check_clinical_completeness(normalized: Dict[str, Any]) -> Dict[str, Any]:
             missing_fields.append(field)
             log.debug(f"[Completeness] Missing: {field}")
 
-    # ── 2. Prescription row validation ───────────────────────
+    # 2. Prescription row validation
     medications = normalized.get("medications", [])
 
     if not medications:
@@ -89,7 +56,7 @@ def check_clinical_completeness(normalized: Dict[str, Any]) -> Dict[str, Any]:
                         f": missing '{rx_field}'"
                     )
 
-    # ── 3. Clinical policy checks ─────────────────────────────
+    # 3. Clinical policy checks
     policies = RULES.get("clinical_validation_policies", {})
 
     # Allergy field present but empty — flag it
@@ -112,7 +79,6 @@ def check_clinical_completeness(normalized: Dict[str, Any]) -> Dict[str, Any]:
                 "Policy: abnormal_lab_requires_followup is ON but no follow-up appointment found"
             )
 
-    # ── 4. Compute result ─────────────────────────────────────
     passed = len(missing_fields) == 0 and len(rule_violations) == 0
 
     if passed:
