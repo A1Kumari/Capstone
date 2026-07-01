@@ -2,12 +2,12 @@ import os
 import json
 from pathlib import Path
 from datetime import datetime, timezone
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from dotenv import load_dotenv
-from configs.config import EMBEDDING_MODEL, GEMINI_API_KEY
+from configs.config import EMBEDDING_MODEL, LLM_BASE_URL, FOUNDATION_MODEL_API_KEY
 
 load_dotenv()
 
@@ -16,9 +16,10 @@ PATIENTS_FILE = INDEX_DIR / "patients.json"
 
 
 def get_embeddings():
-    return GoogleGenerativeAIEmbeddings(
+    return OpenAIEmbeddings(
         model=EMBEDDING_MODEL,
-        google_api_key=GEMINI_API_KEY,
+        openai_api_base=LLM_BASE_URL,
+        openai_api_key=FOUNDATION_MODEL_API_KEY,
     )
 
 

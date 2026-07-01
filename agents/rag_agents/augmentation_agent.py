@@ -3,7 +3,7 @@ import litellm
 from agents.rag_agents.rag_state import RAGState
 
 from dotenv import load_dotenv
-from configs.config import LITELLM_MODEL, get_prompt
+from configs.config import LITELLM_MODEL, LLM_BASE_URL, FOUNDATION_MODEL_API_KEY, get_prompt
 
 load_dotenv()
 
@@ -31,6 +31,8 @@ def augmentation_grader_node(state: RAGState) -> dict:
         try:
             response = litellm.completion(
                 model=LITELLM_MODEL,
+                api_key=FOUNDATION_MODEL_API_KEY,
+                api_base=LLM_BASE_URL,
                 messages=messages,
                 response_format={"type": "json_object"},
                 temperature=0,

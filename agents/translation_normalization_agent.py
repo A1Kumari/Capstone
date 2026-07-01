@@ -5,7 +5,7 @@ from typing import Dict, Any
 from dotenv import load_dotenv
 import litellm
 
-from configs.config import LITELLM_MODEL, ABBREVIATION_MAP, get_prompt
+from configs.config import LITELLM_MODEL, LLM_BASE_URL, FOUNDATION_MODEL_API_KEY, ABBREVIATION_MAP, get_prompt
 
 load_dotenv()
 log = logging.getLogger("TranslationAgent")
@@ -31,7 +31,7 @@ def translate_and_normalize(extracted_payload: Dict[str, Any]) -> Dict[str, Any]
             "translation_confidence" : 0.0,
         }
 
-    log.info("[TranslationAgent] Calling LiteLLM → Gemini")
+    log.info("[TranslationAgent] Calling LiteLLM proxy")
 
     user_message = (
         f"CLINICAL DOCUMENT TEXT:\n{raw_text}\n\n"
@@ -41,6 +41,8 @@ def translate_and_normalize(extracted_payload: Dict[str, Any]) -> Dict[str, Any]
     try:
         response = litellm.completion(
             model    = LITELLM_MODEL,
+            api_key  = FOUNDATION_MODEL_API_KEY,
+            api_base = LLM_BASE_URL,
             messages = [
                 {"role": "system", "content": _SYSTEM_PROMPT},
                 {"role": "user",   "content": user_message},

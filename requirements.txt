@@ -11,7 +11,7 @@ pyyaml
 langgraph
 langchain-core
 langchain-community
-langchain-google-genai
+langchain-openai
 langchain-text-splitters
 faiss-cpu
 pydantic

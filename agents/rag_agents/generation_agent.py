@@ -2,7 +2,7 @@ import litellm
 from agents.rag_agents.rag_state import RAGState
 
 from dotenv import load_dotenv
-from configs.config import LITELLM_MODEL, RAG_UNKNOWN_RESPONSE, get_prompt
+from configs.config import LITELLM_MODEL, LLM_BASE_URL, FOUNDATION_MODEL_API_KEY, RAG_UNKNOWN_RESPONSE, get_prompt
 
 load_dotenv()
 
@@ -25,6 +25,8 @@ def generation_node(state: RAGState) -> dict:
    try:
        response = litellm.completion(
            model=LITELLM_MODEL,
+           api_key=FOUNDATION_MODEL_API_KEY,
+           api_base=LLM_BASE_URL,
            messages=messages,
        )
        generation = response.choices[0].message.content

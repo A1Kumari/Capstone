@@ -8,10 +8,11 @@ load_dotenv()
 _CONFIGS_DIR = Path(__file__).resolve().parent
 
 # override via .env
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-EHR_BASE_URL   = os.getenv("EHR_BASE_URL",   "http://127.0.0.1:8000")
-LITELLM_MODEL   = os.getenv("LITELLM_MODEL",   "gemini/gemini-2.5-flash-lite")
-EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "models/gemini-embedding-001")
+FOUNDATION_MODEL_API_KEY = os.getenv("FOUNDATION_MODEL_API_KEY", "")
+LLM_BASE_URL    = os.getenv("LLM_BASE_URL",    "https://llmgw-infy.tekstac.com/v1/")
+EHR_BASE_URL    = os.getenv("EHR_BASE_URL",    "http://127.0.0.1:8000")
+LITELLM_MODEL   = os.getenv("LITELLM_MODEL",   "openai/gpt-5.4-mini")
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
 
 RAG_UNKNOWN_RESPONSE = "I don't know"
 
